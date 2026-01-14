@@ -9,3 +9,8 @@ dependencies = [
     "sqlalchemy>=2.0.45",
     "xai-sdk>=1.5.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

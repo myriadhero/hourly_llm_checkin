@@ -6,9 +6,10 @@ parses the reply with xAI, and logs it into `track/activities.db` via `track/tra
 ## Setup
 
 Environment variables:
-- `TELEGRAM_BOT_TOKEN` (required)
-- `XAI_API_KEY` (required)
-- `XAI_MODEL` (optional, default: `grok-2-latest`)
+
+- `TELEGRAM_BOT_TOKEN` (required, [docs](https://core.telegram.org/bots/tutorial#obtain-your-bot-token))
+- `XAI_API_KEY` (required, [docs](https://docs.x.ai/docs/tutorial))
+- `XAI_MODEL` (optional, default: `grok-4-latest`)
 - `XAI_TIMEOUT_SECONDS` (optional; set for long reasoning timeouts)
 - `TELEGRAM_CHAT_ID` (optional; if unset, send `/start` once to register)
 - `TIMEZONE` (optional, e.g. `America/Los_Angeles`)
@@ -21,9 +22,12 @@ Environment variables:
 - `LOG_VERBOSE` (optional; set to `1` to include polling logs)
 - `LOG_DIR` (optional; folder to write `hourly_llm_checkin.log`)
 
+[Install `uv`](https://docs.astral.sh/uv/getting-started/installation/).
+
 Run:
+
 ```bash
-uv run python main.py
+uv run main.py
 ```
 
 ## Usage
@@ -38,5 +42,13 @@ uv run python main.py
 ## Tests
 
 ```bash
-python -m unittest
+uv sync --dev # once to install
+uv run pytest
 ```
+
+## TODO
+
+- Better formatting for `/list` command in telegram
+- Include basic memory for a type of goal setting during checkins
+- Maybe include context for processing prompt
+- Fix tests and add a few more

@@ -53,7 +53,7 @@ def load_config() -> BotConfig:
     return BotConfig(
         token=token,
         xai_api_key=xai_api_key,
-        xai_model=os.getenv("XAI_MODEL", "grok-2-latest"),
+        xai_model=os.getenv("XAI_MODEL", "grok-4-latest"),
         timezone_name=os.getenv("TIMEZONE"),
         day_start_hour=parse_int_env("DAY_START_HOUR", 9, 0, 23),
         day_end_hour=parse_int_env("DAY_END_HOUR", 18, 0, 23),
@@ -71,5 +71,7 @@ def get_timezone(config: BotConfig) -> tzinfo:
         try:
             return ZoneInfo(config.timezone_name)
         except ZoneInfoNotFoundError:
-            logging.warning("Unknown TIMEZONE %r, using local timezone.", config.timezone_name)
+            logging.warning(
+                "Unknown TIMEZONE %r, using local timezone.", config.timezone_name
+            )
     return datetime.now().astimezone().tzinfo or timezone.utc
