@@ -1,0 +1,41 @@
+import json
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+
+@dataclass
+class BotState:
+    chat_id: Optional[int] = None
+    last_prompt_at: Optional[datetime] = None
+
+
+def load_state(path: Path) -> BotState:
+    if not path.exists():
+        return BotState()
+    try:
+        raw = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return BotState()
+    last_prompt_at = None
+    if isinstance(raw.get("last_prompt_at"), str):
+        try:
+            last_prompt_at = datetime.fromisoformat(raw["last_prompt_at"])
+        except ValueError:
+            last_prompt_at = None
+    chat_id = raw.get("chat_id")
+    if not isinstance(chat_id, int):
+        chat_id = None
+    return BotState(chat_id=chat_id, last_prompt_at=last_prompt_at)
+
+
+def save_state(path: Path, state: BotState) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "chat_id": state.chat_id,
+        "last_prompt_at": state.last_prompt_at.isoformat() if state.last_prompt_at else None,
+    }
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(payload, indent=2))
+    temp_path.replace(path)
