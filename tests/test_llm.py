@@ -1,6 +1,6 @@
 import unittest
 
-from hourly_llm_checkin.llm import normalize_activity
+from bot.llm import normalize_activity
 
 
 class NormalizeActivityTests(unittest.TestCase):

@@ -48,7 +48,8 @@ uv run pytest
 
 ## TODO
 
-- Better formatting for `/list` command in telegram
-- Include basic memory for a type of goal setting during checkins
-- Maybe include context for processing prompt
+Needs more brainstorming.
+
 - Fix tests and add a few more
+- Maybe include more context for processing prompt (what context is useful?)
+- Include basic memory for a type of goal setting during checkins (using /goal command?)

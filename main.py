@@ -1,5 +1,4 @@
-from hourly_llm_checkin.app import main
-
+from bot.app import main
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from hourly_llm_checkin.time_utils import is_daytime, seconds_until_next_hour
+from bot.time_utils import is_daytime, seconds_until_next_hour
 
 
 class TimeUtilsTests(unittest.TestCase):

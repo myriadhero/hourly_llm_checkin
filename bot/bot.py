@@ -1,7 +1,5 @@
 import asyncio
-import io
 import logging
-from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,17 +26,27 @@ def should_process_checkin(now: datetime, state: BotState, ttl_minutes: int) -> 
     return now - last_prompt_at <= timedelta(minutes=ttl_minutes)
 
 
-def render_activity_summary(activity: ActivityData) -> str:
+def render_activity_summary(activity: ActivityData, activity_ts: datetime | None = None) -> str:
     tags = ", ".join(activity.tags) if activity.tags else "none"
-    when = activity.when or "now"
+    if activity_ts is not None:
+        when = activity_ts.strftime("%Y-%m-%d %H:%M")
+    else:
+        when = activity.when or "now"
     return f"Logged: Q{activity.quadrant} | {activity.duration_minutes:g}m | {activity.description} | tags: {tags} | when: {when}"
 
 
-def capture_list_output(limit: int, sort_by: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        track.list_activities(limit, sort_by)
-    return buffer.getvalue().strip()
+def format_activity_list(activities: list[track.Activity]) -> str:
+    if not activities:
+        return "No activities found."
+    lines: list[str] = []
+    for activity in activities:
+        when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
+        duration = f"{activity.duration_minutes:g}m"
+        tags = f" | tags: {activity.tags}" if activity.tags else ""
+        lines.append(
+            f"- {when} | {duration} | Q{activity.quadrant} | {activity.description}{tags}"
+        )
+    return "\n".join(lines)
 
 
 async def send_checkin(context: ContextTypes.DEFAULT_TYPE, force: bool = False) -> bool:
@@ -115,13 +123,12 @@ async def handle_list_command(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
     limit = max(1, min(limit, 50))
     try:
-        output = await asyncio.to_thread(capture_list_output, limit, "event")
+        activities = await asyncio.to_thread(track.fetch_activities, limit, "event")
     except Exception as exc:
         logging.exception("Failed to list activities: %s", exc)
         await update.message.reply_text("Listing failed. Check logs for details.")
         return
-    if not output:
-        output = "No activities found."
+    output = format_activity_list(activities)
     if len(output) > 4000:
         output = output[:4000].rstrip() + "\n...truncated"
     await update.message.reply_text(output)
@@ -156,7 +163,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     tags = ",".join(activity.tags) if activity.tags else None
     try:
-        await asyncio.to_thread(
+        activity_ts = await asyncio.to_thread(
             track.add_activity,
             activity.when,
             activity.duration_minutes,
@@ -170,7 +177,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     state.last_prompt_at = None
     save_state(state_path, state)
-    await update.message.reply_text(render_activity_summary(activity))
+    await update.message.reply_text(render_activity_summary(activity, activity_ts))
 
 
 async def on_startup(application: Application) -> None:

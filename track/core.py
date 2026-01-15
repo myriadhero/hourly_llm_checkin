@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -55,7 +55,15 @@ def parse_activity_timestamp(when: Optional[str]) -> datetime:
             return activity_ts
         except ValueError:
             continue
-    raise ValueError(f"Could not parse timestamp '{when}'. Try formats: '2024-01-04 10:30', '2024-01-04', '10:30'")
+    raise ValueError(
+        f"Could not parse timestamp '{when}'. Try formats: '2024-01-04 10:30', '2024-01-04', '10:30'"
+    )
+
+
+def resolve_activity_timestamp(when: Optional[str], duration: float) -> datetime:
+    if not when or (isinstance(when, str) and when.strip().lower() == "now"):
+        return datetime.now() - timedelta(minutes=duration)
+    return parse_activity_timestamp(when)
 
 
 def add_activity(
@@ -64,10 +72,10 @@ def add_activity(
     quadrant: int,
     desc: str,
     tags: Optional[str],
-) -> None:
+) -> datetime:
     if quadrant not in QUADRANTS:
         raise ValueError(f"Quadrant must be 1-4. Got {quadrant}")
-    activity_ts = parse_activity_timestamp(when)
+    activity_ts = resolve_activity_timestamp(when, duration)
 
     session = Session()
     try:
@@ -88,6 +96,7 @@ def add_activity(
 
     finally:
         session.close()
+    return activity_ts
 
 
 def format_table(headers: list[str], rows: list[list[str]]) -> str:
@@ -126,7 +135,7 @@ def render_activities(activities: list[Activity]) -> None:
     print(format_table(headers, rows))
 
 
-def list_activities(limit: int, sort_by: str) -> None:
+def fetch_activities(limit: int, sort_by: str) -> list[Activity]:
     session = Session()
     try:
         if sort_by == "added":
@@ -138,9 +147,14 @@ def list_activities(limit: int, sort_by: str) -> None:
         else:
             query = session.query(Activity).order_by(Activity.id.desc())
             activities = list(reversed(query.limit(limit).all()))
-        render_activities(activities)
+        return activities
     finally:
         session.close()
+
+
+def list_activities(limit: int, sort_by: str) -> None:
+    activities = fetch_activities(limit, sort_by)
+    render_activities(activities)
 
 
 def search_activities(tags: Optional[str], desc: Optional[str], quadrant: Optional[int]) -> None:
