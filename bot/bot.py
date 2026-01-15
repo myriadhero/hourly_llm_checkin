@@ -10,7 +10,7 @@ from xai_sdk import Client
 import track
 
 from .config import BotConfig
-from .llm import ActivityData, parse_activity_from_text
+from .llm import ActivityData, NotEventsError, parse_activities_from_text
 from .state import BotState, save_state
 from .time_utils import is_daytime, seconds_until_next_hour
 
@@ -139,45 +139,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     config: BotConfig = context.application.bot_data["config"]
     state: BotState = context.application.bot_data["state"]
-    tzinfo = context.application.bot_data["timezone"]
     state_path: Path = context.application.bot_data["state_path"]
     chat_id = update.effective_chat.id if update.effective_chat else None
     if chat_id is None:
         return
     if config.chat_id and chat_id != config.chat_id:
         return
-    if not should_process_checkin(datetime.now(tzinfo), state, config.pending_ttl_minutes):
-        await update.message.reply_text(
-            "I didn't ask for a check-in yet. Send /checkin to log one now."
-        )
+    message_id = update.message.message_id
+    if state.last_message_id is not None and message_id <= state.last_message_id:
         return
     text = update.message.text
     client: Client = context.application.bot_data["xai_client"]
     try:
-        activity = await asyncio.to_thread(parse_activity_from_text, client, config.xai_model, text)
+        activities = await asyncio.to_thread(
+            parse_activities_from_text, client, config.xai_model, text
+        )
+    except NotEventsError as exc:
+        await update.message.reply_text(str(exc))
+        state.last_message_id = message_id
+        save_state(state_path, state)
+        return
     except Exception as exc:
         logging.exception("Failed to parse check-in: %s", exc)
         await update.message.reply_text(
             "I couldn't parse that. Please include what you did, how long, and a quadrant (Q1-4)."
         )
         return
-    tags = ",".join(activity.tags) if activity.tags else None
-    try:
-        activity_ts = await asyncio.to_thread(
-            track.add_activity,
-            activity.when,
-            activity.duration_minutes,
-            activity.quadrant,
-            activity.description,
-            tags,
-        )
-    except Exception as exc:
-        logging.exception("Failed to log activity: %s", exc)
-        await update.message.reply_text("I parsed it, but logging failed. Check logs for details.")
-        return
+    summaries: list[str] = []
+    for activity in activities:
+        tags = ",".join(activity.tags) if activity.tags else None
+        try:
+            activity_ts = await asyncio.to_thread(
+                track.add_activity,
+                activity.when,
+                activity.duration_minutes,
+                activity.quadrant,
+                activity.description,
+                tags,
+            )
+        except Exception as exc:
+            logging.exception("Failed to log activity: %s", exc)
+            await update.message.reply_text(
+                "I parsed it, but logging failed. Check logs for details."
+            )
+            return
+        summaries.append(render_activity_summary(activity, activity_ts))
     state.last_prompt_at = None
+    state.last_message_id = message_id
     save_state(state_path, state)
-    await update.message.reply_text(render_activity_summary(activity, activity_ts))
+    await update.message.reply_text("\n".join(summaries))
 
 
 async def on_startup(application: Application) -> None:

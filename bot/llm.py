@@ -15,20 +15,44 @@ class ActivityData:
     when: Optional[str]
 
 
+class NotEventsError(ValueError):
+    pass
+
+
 def build_system_prompt() -> str:
     return (
-        "You extract a single activity entry from a check-in message. "
-        "Return ONLY valid JSON with keys: "
-        "description (string), duration_minutes (number), quadrant (integer 1-4), "
-        "tags (array of strings, optional), when (string optional in 'YYYY-MM-DD HH:MM' 24h). "
+        "You extract activity entries from a check-in message. "
+        "Return ONLY valid JSON as a LIST of objects (one per activity). Return a list even if only a single event object was extracted. "
+        "Each object must include keys: "
+        "description (string; what was done, short phrase), "
+        "duration_minutes (number; minutes spent), "
+        "quadrant (integer 1-4; Eisenhower matrix: Q1 urgent+important, "
+        "Q2 important+not urgent, Q3 urgent+not important, Q4 not urgent+not important), "
+        "tags (array of strings, optional), "
+        "when (string optional in 'YYYY-MM-DD HH:MM' 24h; when it happened). "
+        "If quadrant is missing, infer it from the description/urgency/importance. "
         "Infer tags even if the user does not provide them; prefer concise, lowercase tags "
         "like work, health, relationships, focus, distraction, learning, planning. "
+        "NOTE: If the user message is clearly not a check-in entry, return a single JSON object (not a list) "
+        "with keys: error (set to notEvents), message (one sentence). The message should be "
+        "a brief low-effort positive/encouraging (prompt user to think of something they care about) reply if it's a simple acknowledgement like "
+        "'thanks', otherwise briefly explain why it couldn't be parsed. "
         "Do not include any extra keys or commentary."
     )
 
 
 def extract_json(text: str) -> str:
-    start = text.find("{")
+    brace_index = text.find("{")
+    bracket_index = text.find("[")
+    if brace_index == -1 and bracket_index == -1:
+        raise ValueError("LLM response did not include JSON")
+    if bracket_index != -1 and (brace_index == -1 or bracket_index < brace_index):
+        start = bracket_index
+        end = text.rfind("]")
+        if end == -1 or end <= start:
+            raise ValueError("LLM response did not include JSON array")
+        return text[start : end + 1]
+    start = brace_index
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
         raise ValueError("LLM response did not include JSON object")
@@ -64,7 +88,9 @@ def normalize_activity(payload: dict[str, Any]) -> ActivityData:
         if not normalized_tags:
             normalized_tags = None
     else:
-        normalized_tags = [part.strip() for part in str(tags).split(",") if part.strip()] or None
+        normalized_tags = [
+            part.strip() for part in str(tags).split(",") if part.strip()
+        ] or None
     when_value = str(when) if isinstance(when, str) and when.strip() else None
     return ActivityData(
         description=description.strip(),
@@ -75,11 +101,37 @@ def normalize_activity(payload: dict[str, Any]) -> ActivityData:
     )
 
 
-def parse_activity_from_text(client: Client, model: str, text: str) -> ActivityData:
+def normalize_activities(payload: Any) -> list[ActivityData]:
+    if isinstance(payload, dict):
+        if payload.get("error") == "notEvents":
+            message = payload.get("message")
+            raise NotEventsError(
+                message
+                if isinstance(message, str) and message.strip()
+                else "Not a check-in."
+            )
+        payloads = [payload]
+    elif isinstance(payload, list):
+        payloads = payload
+    else:
+        raise ValueError("LLM response did not include activity list")
+    activities: list[ActivityData] = []
+    for item in payloads:
+        if not isinstance(item, dict):
+            raise ValueError("Activity entries must be objects")
+        activities.append(normalize_activity(item))
+    if not activities:
+        raise ValueError("No activities found")
+    return activities
+
+
+def parse_activities_from_text(
+    client: Client, model: str, text: str
+) -> list[ActivityData]:
     chat = client.chat.create(model=model)
     chat.append(system(build_system_prompt()))
     chat.append(user(text))
     response = chat.sample()
     raw = response.content or ""
     payload = json.loads(extract_json(raw))
-    return normalize_activity(payload)
+    return normalize_activities(payload)

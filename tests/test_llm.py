@@ -1,6 +1,6 @@
 import unittest
 
-from bot.llm import normalize_activity
+from bot.llm import NotEventsError, normalize_activities, normalize_activity
 
 
 class NormalizeActivityTests(unittest.TestCase):
@@ -28,6 +28,32 @@ class NormalizeActivityTests(unittest.TestCase):
         }
         activity = normalize_activity(payload)
         self.assertEqual(activity.tags, ["work", "planning", "focus"])
+
+    def test_normalize_activity_list(self) -> None:
+        payload = [
+            {
+                "description": "Email triage",
+                "duration_minutes": 15,
+                "quadrant": 3,
+                "tags": ["work"],
+            },
+            {
+                "description": "Deep work block",
+                "duration_minutes": "60",
+                "quadrant": "2",
+                "tags": "focus,work",
+            },
+        ]
+        activities = normalize_activities(payload)
+        self.assertEqual(len(activities), 2)
+        self.assertEqual(activities[0].quadrant, 3)
+        self.assertEqual(activities[1].duration_minutes, 60.0)
+
+    def test_normalize_not_events(self) -> None:
+        payload = {"error": "notEvents", "message": "Thanks!"}
+        with self.assertRaises(NotEventsError) as context:
+            normalize_activities(payload)
+        self.assertIn("Thanks", str(context.exception))
 
 
 if __name__ == "__main__":

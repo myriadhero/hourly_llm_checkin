@@ -9,6 +9,7 @@ from typing import Optional
 class BotState:
     chat_id: Optional[int] = None
     last_prompt_at: Optional[datetime] = None
+    last_message_id: Optional[int] = None
 
 
 def load_state(path: Path) -> BotState:
@@ -27,7 +28,14 @@ def load_state(path: Path) -> BotState:
     chat_id = raw.get("chat_id")
     if not isinstance(chat_id, int):
         chat_id = None
-    return BotState(chat_id=chat_id, last_prompt_at=last_prompt_at)
+    last_message_id = raw.get("last_message_id")
+    if not isinstance(last_message_id, int):
+        last_message_id = None
+    return BotState(
+        chat_id=chat_id,
+        last_prompt_at=last_prompt_at,
+        last_message_id=last_message_id,
+    )
 
 
 def save_state(path: Path, state: BotState) -> None:
@@ -35,6 +43,7 @@ def save_state(path: Path, state: BotState) -> None:
     payload = {
         "chat_id": state.chat_id,
         "last_prompt_at": state.last_prompt_at.isoformat() if state.last_prompt_at else None,
+        "last_message_id": state.last_message_id,
     }
     temp_path = path.with_suffix(path.suffix + ".tmp")
     temp_path.write_text(json.dumps(payload, indent=2))
