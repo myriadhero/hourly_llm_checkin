@@ -56,7 +56,7 @@ def parse_activity_timestamp(when: Optional[str]) -> datetime:
         except ValueError:
             continue
     raise ValueError(
-        f"Could not parse timestamp '{when}'. Try formats: '2024-01-04 10:30', '2024-01-04', '10:30'"
+        f"Could not parse timestamp '{when}'. Try formats: '2026-01-04 10:30', '2026-01-04', '10:30'"
     )
 
 
@@ -148,6 +148,34 @@ def fetch_activities(limit: int, sort_by: str) -> list[Activity]:
             query = session.query(Activity).order_by(Activity.id.desc())
             activities = list(reversed(query.limit(limit).all()))
         return activities
+    finally:
+        session.close()
+
+
+def fetch_activity(activity_id: int) -> Optional[Activity]:
+    session = Session()
+    try:
+        activity = (
+            session.query(Activity).filter(Activity.id == activity_id).one_or_none()
+        )
+        if activity:
+            session.expunge(activity)
+        return activity
+    finally:
+        session.close()
+
+
+def delete_activity(activity_id: int) -> bool:
+    session = Session()
+    try:
+        activity = (
+            session.query(Activity).filter(Activity.id == activity_id).one_or_none()
+        )
+        if not activity:
+            return False
+        session.delete(activity)
+        session.commit()
+        return True
     finally:
         session.close()
 

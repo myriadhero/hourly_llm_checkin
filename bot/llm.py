@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -19,20 +20,27 @@ class NotEventsError(ValueError):
     pass
 
 
+class UnclearEventError(ValueError):
+    pass
+
+
 def build_system_prompt() -> str:
     return (
         "You extract activity entries from a check-in message. "
         "Return ONLY valid JSON as a LIST of objects (one per activity). Return a list even if only a single event object was extracted. "
         "Each object must include keys: "
         "description (string; what was done, short phrase), "
-        "duration_minutes (number; minutes spent), "
+        "duration_minutes (number > 0; minutes spent), "
         "quadrant (integer 1-4; Eisenhower matrix: Q1 urgent+important, "
         "Q2 important+not urgent, Q3 urgent+not important, Q4 not urgent+not important), "
         "tags (array of strings, optional), "
-        "when (string optional in 'YYYY-MM-DD HH:MM' 24h; when it happened). "
+        "when (string optional literal 'now' OR 'YYYY-MM-DD HH:MM' in 24h format; when the parsed activity happened, PREFER literal 'now' instead of timestamp unless specified). "
         "If quadrant is missing, infer it from the description/urgency/importance. "
         "Infer tags even if the user does not provide them; prefer concise, lowercase tags "
         "like work, health, relationships, focus, distraction, learning, planning. "
+        "NOTE: If the message is an attempted check-in but too ambiguous to extract (missing key details or unclear whether it's one or many events), "
+        "return a single JSON object (not a list) with keys: error (set to unclearEvent), message "
+        "(one sentence prompting the user to clarify the missing specifics). "
         "NOTE: If the user message is clearly not a check-in entry, return a single JSON object (not a list) "
         "with keys: error (set to notEvents), message (one sentence). The message should be "
         "a brief low-effort positive/encouraging (prompt user to think of something they care about) reply if it's a simple acknowledgement like "
@@ -110,6 +118,13 @@ def normalize_activities(payload: Any) -> list[ActivityData]:
                 if isinstance(message, str) and message.strip()
                 else "Not a check-in."
             )
+        if payload.get("error") == "unclearEvent":
+            message = payload.get("message")
+            raise UnclearEventError(
+                message
+                if isinstance(message, str) and message.strip()
+                else "Please clarify what you did, how long it took, and the quadrant."
+            )
         payloads = [payload]
     elif isinstance(payload, list):
         payloads = payload
@@ -128,10 +143,12 @@ def normalize_activities(payload: Any) -> list[ActivityData]:
 def parse_activities_from_text(
     client: Client, model: str, text: str
 ) -> list[ActivityData]:
+    logging.debug("LLM check-in prompt: %s", text)
     chat = client.chat.create(model=model)
     chat.append(system(build_system_prompt()))
     chat.append(user(text))
     response = chat.sample()
     raw = response.content or ""
+    logging.debug("LLM check-in response: %s", raw)
     payload = json.loads(extract_json(raw))
     return normalize_activities(payload)

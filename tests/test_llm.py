@@ -1,6 +1,11 @@
 import unittest
 
-from bot.llm import NotEventsError, normalize_activities, normalize_activity
+from bot.llm import (
+    NotEventsError,
+    UnclearEventError,
+    normalize_activities,
+    normalize_activity,
+)
 
 
 class NormalizeActivityTests(unittest.TestCase):
@@ -54,6 +59,15 @@ class NormalizeActivityTests(unittest.TestCase):
         with self.assertRaises(NotEventsError) as context:
             normalize_activities(payload)
         self.assertIn("Thanks", str(context.exception))
+
+    def test_normalize_unclear_event(self) -> None:
+        payload = {
+            "error": "unclearEvent",
+            "message": "Can you clarify what you did and for how long?",
+        }
+        with self.assertRaises(UnclearEventError) as context:
+            normalize_activities(payload)
+        self.assertIn("clarify", str(context.exception))
 
 
 if __name__ == "__main__":
