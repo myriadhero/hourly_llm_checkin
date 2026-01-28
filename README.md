@@ -34,7 +34,7 @@ uv run main.py
 
 - Send `/start` in your bot chat to register the chat ID.
 - The bot sends an hourly prompt during daytime.
-- Reply in natural language. Include duration and quadrant (Q1-4) for best results.
+- Reply in natural language. Include duration, quadrant (Q1-4), tags, and why for best results.
 - Send `/checkin` to request a prompt immediately.
 - Send `/list` or `/list 5` to see recent entries.
 - State (chat ID + last prompt timestamp) is stored in `bot_state.json` by default.

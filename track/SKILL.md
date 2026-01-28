@@ -1,6 +1,6 @@
 # Activity Tracker Skill
 
-Track activities with Eisenhower matrix classification, duration, and tags.
+Track activities with Eisenhower matrix classification, duration, tags, and why.
 
 ## When to Use
 
@@ -26,6 +26,7 @@ When invoked, infer or collect:
    - Q4: Not Urgent & Not Important (distractions, time-wasters) → Eliminate
 4. **When** - When did it happen? (optional, defaults to now)
 5. **Tags** - Categories like `work`, `health`, `relationships`, `focus`, `distraction`, etc. (optional)
+6. **Why** - Short reason/intent for the activity (optional)
 
 If the user provides info naturally, parse it. If not, ask briefly.
 
@@ -39,7 +40,8 @@ uv run {workspace}/skills/activity-tracker/track.py add \
   --d 45 \
   --q 2 \
   --D "Deep work on project X" \
-  --t "work,coding,focus"
+  --t "work,coding,focus" \
+  --y "Prepare for Friday demo"
 ```
 
 ### List
@@ -69,6 +71,7 @@ uv run {workspace}/skills/activity-tracker/track.py remove --id 42
 | `add` | `--desc` | `-D` | Yes | Activity description |
 | `add` | `--tags` | `-t` | No | Comma-separated tags |
 | `add` | `--when` | `-w` | No | Timestamp (defaults to now) |
+| `add` | `--why` | `-y` | No | Optional reason or intent for the activity |
 | `list` | `--limit` | `-l` | No | Number of activities to show (default: 10) |
 | `list` | `--sort-by` |  | No | Sort by `id` (ASC), `added` (entry timestamp DESC), or `event` (activity timestamp DESC) |
 | `search` | `--tags` | `-t` | No | Comma-separated tags to match (OR logic) |
@@ -94,6 +97,7 @@ Schema:
 - `quadrant` - Eisenhower quadrant (1-4)
 - `description` - freeform description
 - `tags` - comma-separated tags
+- `why` - optional reason/intent
 
 ## Example Interaction
 

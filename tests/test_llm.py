@@ -16,6 +16,7 @@ class NormalizeActivityTests(unittest.TestCase):
             "quadrant": "2",
             "tags": ["work", "focus"],
             "when": "2024-01-01 10:00",
+            "why": "Prepare for launch",
         }
         activity = normalize_activity(payload)
         self.assertEqual(activity.description, "Deep work on project")
@@ -23,6 +24,7 @@ class NormalizeActivityTests(unittest.TestCase):
         self.assertEqual(activity.quadrant, 2)
         self.assertEqual(activity.tags, ["work", "focus"])
         self.assertEqual(activity.when, "2024-01-01 10:00")
+        self.assertEqual(activity.why, "Prepare for launch")
 
     def test_parse_comma_tags(self) -> None:
         payload = {
@@ -30,9 +32,11 @@ class NormalizeActivityTests(unittest.TestCase):
             "duration_minutes": 30,
             "quadrant": 2,
             "tags": "work,planning, focus",
+            "why": "",
         }
         activity = normalize_activity(payload)
         self.assertEqual(activity.tags, ["work", "planning", "focus"])
+        self.assertIsNone(activity.why)
 
     def test_normalize_activity_list(self) -> None:
         payload = [

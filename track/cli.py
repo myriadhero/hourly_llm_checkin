@@ -28,6 +28,7 @@ def main() -> None:
     add_parser.add_argument("--quadrant", "-q", type=int, required=True, help="Eisenhower quadrant (1-4)")
     add_parser.add_argument("--desc", "-D", required=True, help="Description of the activity")
     add_parser.add_argument("--tags", "-t", help="Comma-separated tags (e.g., 'work,coding,focus')")
+    add_parser.add_argument("--why", "-y", help="Optional reason or intent for the activity")
 
     list_parser = subparsers.add_parser("list", help="List recent activities")
     list_parser.add_argument("--limit", "-l", type=int, default=10, help="Number of activities to show (default: 10)")
@@ -52,7 +53,9 @@ def main() -> None:
 
     try:
         if args.command == "add":
-            add_activity(args.when, args.duration, args.quadrant, args.desc, args.tags)
+            add_activity(
+                args.when, args.duration, args.quadrant, args.desc, args.tags, args.why
+            )
         elif args.command == "list":
             list_activities(args.limit, args.sort_by)
         elif args.command == "search":

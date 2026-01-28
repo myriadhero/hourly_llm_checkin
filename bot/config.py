@@ -59,7 +59,7 @@ def load_config() -> BotConfig:
         day_end_hour=parse_int_env("DAY_END_HOUR", 18, 0, 23),
         checkin_prompt=os.getenv(
             "CHECKIN_PROMPT",
-            "Hourly check-in: what did you do in the last hour? Include duration, quadrant (Q1-4), and tags if you can.",
+            "Hourly check-in: what did you do in the last hour? Include duration, quadrant (Q1-4), tags, and why if you can.",
         ),
         chat_id=chat_id,
         pending_ttl_minutes=parse_int_env("CHECKIN_TTL_MINUTES", 120, 10, 720),

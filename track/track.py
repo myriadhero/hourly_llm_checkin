@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Activity Tracker - Log activities with Eisenhower matrix quadrant and tags.
-Usage: uv run track.py add --when "2024-01-04 10:30" --duration 45 --quadrant 2 --desc "Deep work on project X" --tags "work,coding,focus"
+Usage: uv run track.py add --when "2024-01-04 10:30" --duration 45 --quadrant 2 --desc "Deep work on project X" --tags "work,coding,focus" --why "Project deadline"
        uv run track.py add --duration 30 --quadrant 4 --desc "Scrolled Twitter" --tags "distraction,social"
 """
 

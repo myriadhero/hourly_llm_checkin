@@ -21,6 +21,7 @@ class Activity(Base):
     quadrant = Column(Integer, nullable=False)  # 1-4 Eisenhower matrix
     description = Column(String, nullable=False)
     tags = Column(String, nullable=True)  # Comma-separated
+    why = Column(String, nullable=True)
 
     def __repr__(self):
         return f"<Activity {self.id}: Q{self.quadrant} {self.duration_minutes}m - {self.description[:30]}>"
@@ -72,6 +73,7 @@ def add_activity(
     quadrant: int,
     desc: str,
     tags: Optional[str],
+    why: Optional[str] = None,
 ) -> datetime:
     if quadrant not in QUADRANTS:
         raise ValueError(f"Quadrant must be 1-4. Got {quadrant}")
@@ -85,6 +87,7 @@ def add_activity(
             quadrant=quadrant,
             description=desc,
             tags=tags,
+            why=why,
         )
         session.add(activity)
         session.commit()
@@ -92,6 +95,8 @@ def add_activity(
         print(f"✓ Logged: Q{quadrant} | {duration}m | {desc}")
         if tags:
             print(f"  Tags: {tags}")
+        if why:
+            print(f"  Why: {why}")
         print(f"  When: {activity_ts.strftime('%Y-%m-%d %H:%M')}")
 
     finally:
@@ -117,7 +122,7 @@ def render_activities(activities: list[Activity]) -> None:
     if not activities:
         print("No activities found.")
         return
-    headers = ["ID", "When", "Duration", "Q", "Description", "Tags"]
+    headers = ["ID", "When", "Duration", "Q", "Description", "Tags", "Why"]
     rows: list[list[str]] = []
     for activity in activities:
         when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
@@ -130,6 +135,7 @@ def render_activities(activities: list[Activity]) -> None:
                 str(activity.quadrant),
                 activity.description,
                 activity.tags or "",
+                activity.why or "",
             ]
         )
     print(format_table(headers, rows))
@@ -219,9 +225,10 @@ def remove_activity(activity_id: int) -> None:
             return
         when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
         duration = f"{activity.duration_minutes:g}m"
+        why = f" | why: {activity.why}" if activity.why else ""
         print(
             "About to delete: "
-            f"ID {activity.id} | {when} | {duration} | Q{activity.quadrant} | {activity.description}"
+            f"ID {activity.id} | {when} | {duration} | Q{activity.quadrant} | {activity.description}{why}"
         )
         confirm = input("Delete this activity? [y/N]: ").strip().lower()
         if confirm not in {"y", "yes"}:

@@ -14,6 +14,7 @@ class ActivityData:
     quadrant: int
     tags: Optional[list[str]]
     when: Optional[str]
+    why: Optional[str]
 
 
 class NotEventsError(ValueError):
@@ -28,14 +29,17 @@ def build_system_prompt() -> str:
     return (
         "You extract activity entries from a check-in message. "
         "Return ONLY valid JSON as a LIST of objects (one per activity). Return a list even if only a single event object was extracted. "
-        "Each object must include keys: "
+        "Each object must include keys: \n\n"
         "description (string; what was done, short phrase), "
         "duration_minutes (number > 0; minutes spent), "
         "quadrant (integer 1-4; Eisenhower matrix: Q1 urgent+important, "
         "Q2 important+not urgent, Q3 urgent+not important, Q4 not urgent+not important), "
-        "tags (array of strings, optional), "
-        "when (string optional literal 'now' OR 'YYYY-MM-DD HH:MM' in 24h format; when the parsed activity happened, PREFER literal 'now' instead of timestamp unless specified). "
-        "If quadrant is missing, infer it from the description/urgency/importance. "
+        "[tags (array of strings, optional)], "
+        "[when (string optional literal 'now' OR 'YYYY-MM-DD HH:MM' in 24h format; when the parsed activity happened)], "
+        "[why (string optional; why the user did it, short phrase)] "
+        "\n\nNOTE: If quadrant is missing, infer it from the description/urgency/importance. "
+        "NOTE: PREFER no 'when' field when activity time frame is not specified. "
+        "NOTE: the user may use ambiguous time, ensure it is converted correctly by checking current time of the day. "
         "Infer tags even if the user does not provide them; prefer concise, lowercase tags "
         "like work, health, relationships, focus, distraction, learning, planning. "
         "NOTE: If the message is an attempted check-in but too ambiguous to extract (missing key details or unclear whether it's one or many events), "
@@ -45,6 +49,7 @@ def build_system_prompt() -> str:
         "with keys: error (set to notEvents), message (one sentence). The message should be "
         "a brief low-effort positive/encouraging (prompt user to think of something they care about) reply if it's a simple acknowledgement like "
         "'thanks', otherwise briefly explain why it couldn't be parsed. "
+        "NOTE: do NOT infer 'why', if user doesn't explicitly use 'why:' or 'because' or other clear explanation, do not include 'why'. "
         "Do not include any extra keys or commentary."
     )
 
@@ -73,6 +78,7 @@ def normalize_activity(payload: dict[str, Any]) -> ActivityData:
     quadrant = payload.get("quadrant")
     tags = payload.get("tags")
     when = payload.get("when")
+    why = payload.get("why")
     if not isinstance(description, str) or not description.strip():
         raise ValueError("Missing description")
     if isinstance(duration, str):
@@ -100,12 +106,14 @@ def normalize_activity(payload: dict[str, Any]) -> ActivityData:
             part.strip() for part in str(tags).split(",") if part.strip()
         ] or None
     when_value = str(when) if isinstance(when, str) and when.strip() else None
+    why_value = str(why).strip() if isinstance(why, str) and why.strip() else None
     return ActivityData(
         description=description.strip(),
         duration_minutes=float(duration),
         quadrant=quadrant,
         tags=normalized_tags,
         when=when_value,
+        why=why_value,
     )
 
 

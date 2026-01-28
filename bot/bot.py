@@ -41,11 +41,15 @@ def render_activity_summary(
     activity: ActivityData, activity_ts: datetime | None = None
 ) -> str:
     tags = ", ".join(activity.tags) if activity.tags else "none"
+    why = f" | why: {activity.why}" if activity.why else ""
     if activity_ts is not None:
         when = activity_ts.strftime("%Y-%m-%d %H:%M")
     else:
         when = activity.when or "now"
-    return f"Logged: Q{activity.quadrant} | {activity.duration_minutes:g}m | {activity.description} | tags: {tags} | when: {when}"
+    return (
+        f"Logged: Q{activity.quadrant} | {activity.duration_minutes:g}m | "
+        f"{activity.description}{why} | tags: {tags} | when: {when}"
+    )
 
 
 def format_activity_list(activities: list[track.Activity]) -> str:
@@ -56,8 +60,9 @@ def format_activity_list(activities: list[track.Activity]) -> str:
         when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
         duration = f"{activity.duration_minutes:g}m"
         tags = f" | tags: {activity.tags}" if activity.tags else ""
+        why = f" | why: {activity.why}" if activity.why else ""
         lines.append(
-            f"- {activity.id} | {when} | {duration} | Q{activity.quadrant} | {activity.description}{tags}"
+            f"- {activity.id} | {when} | {duration} | Q{activity.quadrant} | {activity.description}{why}{tags}"
         )
     return "\n".join(lines)
 
@@ -66,18 +71,20 @@ def format_activity_log_fields(activity: track.Activity) -> str:
     when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
     duration = f"{activity.duration_minutes:g}m"
     tags = activity.tags or "none"
+    why = activity.why or "none"
     return (
         f"id={activity.id} when={when} duration={duration} quadrant={activity.quadrant} "
-        f"description={activity.description} tags={tags}"
+        f"description={activity.description} tags={tags} why={why}"
     )
 
 
 def format_delete_prompt(activity: track.Activity) -> str:
     when = activity.activity_timestamp.strftime("%Y-%m-%d %H:%M")
     duration = f"{activity.duration_minutes:g}m"
+    why = f" | why: {activity.why}" if activity.why else ""
     return (
         "Are you sure you want to delete event "
-        f"{activity.id} - {when}, {duration}, {activity.description}?"
+        f"{activity.id} - {when}, {duration}, {activity.description}{why}?"
     )
 
 
@@ -342,6 +349,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 activity.quadrant,
                 activity.description,
                 tags,
+                activity.why,
             )
         except Exception as exc:
             logging.exception("Failed to log activity: %s", exc)
