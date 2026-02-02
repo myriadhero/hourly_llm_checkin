@@ -225,14 +225,14 @@ async def handle_delete_command(
         activity = await asyncio.to_thread(track.fetch_activity, activity_id)
     except Exception as exc:
         logging.exception("Failed to fetch activity %s: %s", activity_id, exc)
-        await update.message.reply_text("Couldn't load that event. Check logs for details.")
+        await update.message.reply_text(
+            "Couldn't load that event. Check logs for details."
+        )
         return
     if not activity:
         await update.message.reply_text(f"No activity found with ID {activity_id}.")
         return
-    logging.debug(
-        "Delete request activity: %s", format_activity_log_fields(activity)
-    )
+    logging.debug("Delete request activity: %s", format_activity_log_fields(activity))
     state.pending_delete_id = activity_id
     save_state(state_path, state)
     await update.message.reply_text(format_delete_prompt(activity))
@@ -258,9 +258,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         activity_id = state.pending_delete_id
         if response in {"y", "yes"}:
             if update.message:
-                logging.debug(
-                    "Delete confirmation message: %s", update.message.text
-                )
+                logging.debug("Delete confirmation message: %s", update.message.text)
             activity = None
             try:
                 activity = await asyncio.to_thread(track.fetch_activity, activity_id)
@@ -295,9 +293,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         if response in {"n", "no"}:
             if update.message:
-                logging.debug(
-                    "Delete confirmation message: %s", update.message.text
-                )
+                logging.debug("Delete confirmation message: %s", update.message.text)
             state.pending_delete_id = None
             save_state(state_path, state)
             await update.message.reply_text("Delete cancelled.")
@@ -349,7 +345,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as exc:
         logging.exception("Failed to parse check-in: %s", exc)
         await update.message.reply_text(
-            "I couldn't parse that. Please include what you did, how long, and a quadrant (Q1-4)."
+            "I couldn't parse that. Please include what you did, how long, and a quadrant (Q1-4). :0"
         )
         return
     summaries: list[str] = []
