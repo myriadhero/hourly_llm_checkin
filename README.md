@@ -17,6 +17,8 @@ Environment variables:
 - `DAY_END_HOUR` (optional, default: `18`, 0-23)
 - `CHECKIN_PROMPT` (optional)
 - `CHECKIN_TTL_MINUTES` (optional, default: `120`)
+- `CHECKIN_WAIT_FOR_REPLY` (optional; set to `1` to pause new prompts until a reply is logged)
+- `CHECKIN_FORCE_AFTER_MINUTES` (optional, default: `0`; if set, send a new prompt after this many minutes even if the last one was unanswered)
 - `STATE_PATH` (optional, default: `bot_state.json`)
 - `LOG_LEVEL` (optional, default: `INFO`)
 - `LOG_VERBOSE` (optional; set to `1` to include polling logs)

@@ -17,6 +17,8 @@ class BotConfig:
     checkin_prompt: str
     chat_id: Optional[int]
     pending_ttl_minutes: int
+    wait_for_reply: bool
+    force_followup_minutes: int
 
 
 def parse_int_env(var_name: str, default: int, min_value: int, max_value: int) -> int:
@@ -32,6 +34,19 @@ def parse_int_env(var_name: str, default: int, min_value: int, max_value: int) -
         logging.warning("Out-of-range %s=%r, using default %s", var_name, raw, default)
         return default
     return value
+
+
+def parse_bool_env(var_name: str, default: bool) -> bool:
+    raw = os.getenv(var_name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "y", "on"}:
+        return True
+    if value in {"0", "false", "no", "n", "off"}:
+        return False
+    logging.warning("Invalid %s=%r, using default %s", var_name, raw, default)
+    return default
 
 
 def load_config() -> BotConfig:
@@ -63,6 +78,10 @@ def load_config() -> BotConfig:
         ),
         chat_id=chat_id,
         pending_ttl_minutes=parse_int_env("CHECKIN_TTL_MINUTES", 120, 10, 720),
+        wait_for_reply=parse_bool_env("CHECKIN_WAIT_FOR_REPLY", False),
+        force_followup_minutes=parse_int_env(
+            "CHECKIN_FORCE_AFTER_MINUTES", 0, 0, 10080
+        ),
     )
 
 

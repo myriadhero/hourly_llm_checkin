@@ -100,6 +100,20 @@ async def send_checkin(context: ContextTypes.DEFAULT_TYPE, force: bool = False) 
     if not chat_id:
         logging.info("No chat_id yet; run /start to register.")
         return False
+    if not force and config.wait_for_reply and state.last_prompt_at:
+        last_prompt_at = state.last_prompt_at
+        if last_prompt_at.tzinfo is None and now.tzinfo is not None:
+            last_prompt_at = last_prompt_at.replace(tzinfo=now.tzinfo)
+        if config.force_followup_minutes <= 0:
+            logging.info("Skipping check-in; awaiting reply to previous prompt.")
+            return False
+        elapsed = now - last_prompt_at
+        if elapsed < timedelta(minutes=config.force_followup_minutes):
+            logging.info(
+                "Skipping check-in; awaiting reply to previous prompt (%s elapsed).",
+                elapsed,
+            )
+            return False
     await context.bot.send_message(chat_id=chat_id, text=config.checkin_prompt)
     state.last_prompt_at = now
     save_state(state_path, state)
