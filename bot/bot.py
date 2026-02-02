@@ -100,6 +100,20 @@ async def send_checkin(context: ContextTypes.DEFAULT_TYPE, force: bool = False) 
     if not chat_id:
         logging.info("No chat_id yet; run /start to register.")
         return False
+    if not force and config.wait_for_reply and state.last_prompt_at:
+        last_prompt_at = state.last_prompt_at
+        if last_prompt_at.tzinfo is None and now.tzinfo is not None:
+            last_prompt_at = last_prompt_at.replace(tzinfo=now.tzinfo)
+        if config.force_followup_minutes <= 0:
+            logging.info("Skipping check-in; awaiting reply to previous prompt.")
+            return False
+        elapsed = now - last_prompt_at
+        if elapsed < timedelta(minutes=config.force_followup_minutes):
+            logging.info(
+                "Skipping check-in; awaiting reply to previous prompt (%s elapsed).",
+                elapsed,
+            )
+            return False
     await context.bot.send_message(chat_id=chat_id, text=config.checkin_prompt)
     state.last_prompt_at = now
     save_state(state_path, state)
@@ -211,14 +225,14 @@ async def handle_delete_command(
         activity = await asyncio.to_thread(track.fetch_activity, activity_id)
     except Exception as exc:
         logging.exception("Failed to fetch activity %s: %s", activity_id, exc)
-        await update.message.reply_text("Couldn't load that event. Check logs for details.")
+        await update.message.reply_text(
+            "Couldn't load that event. Check logs for details."
+        )
         return
     if not activity:
         await update.message.reply_text(f"No activity found with ID {activity_id}.")
         return
-    logging.debug(
-        "Delete request activity: %s", format_activity_log_fields(activity)
-    )
+    logging.debug("Delete request activity: %s", format_activity_log_fields(activity))
     state.pending_delete_id = activity_id
     save_state(state_path, state)
     await update.message.reply_text(format_delete_prompt(activity))
@@ -244,9 +258,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         activity_id = state.pending_delete_id
         if response in {"y", "yes"}:
             if update.message:
-                logging.debug(
-                    "Delete confirmation message: %s", update.message.text
-                )
+                logging.debug("Delete confirmation message: %s", update.message.text)
             activity = None
             try:
                 activity = await asyncio.to_thread(track.fetch_activity, activity_id)
@@ -281,9 +293,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         if response in {"n", "no"}:
             if update.message:
-                logging.debug(
-                    "Delete confirmation message: %s", update.message.text
-                )
+                logging.debug("Delete confirmation message: %s", update.message.text)
             state.pending_delete_id = None
             save_state(state_path, state)
             await update.message.reply_text("Delete cancelled.")
@@ -335,7 +345,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as exc:
         logging.exception("Failed to parse check-in: %s", exc)
         await update.message.reply_text(
-            "I couldn't parse that. Please include what you did, how long, and a quadrant (Q1-4)."
+            "I couldn't parse that. Please include what you did, how long, and a quadrant (Q1-4). :0"
         )
         return
     summaries: list[str] = []
